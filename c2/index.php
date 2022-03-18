@@ -4,7 +4,91 @@
 	Todos los valores esperados son strings, por lo que solo necesitamos hacer (cast) a tipo entero sin mayor validación.
 */
 
-if( empty( $FGC = is_readable( $f = realpath( __DIR__ . '/entrada.txt' ) ) ? file_get_contents( $f ) : FALSE ) ){
+
+$RUTAS = [];
+
+#### Parametros modificadores: ###
+
+	/*	Desde línea de comandos y parametros de URL (GET):
+	 *	 -f, --folder:		Directorio de trabajo.
+	 *	 -i, --input-file:	Archivo de entrada.
+	 *	 -o, --output-file:	Archivo de salida.
+	 *	 -p, --print:		¿Imprimir salida?.
+	*/
+
+		/* Comandos cortos */
+		$shortopts  = '';
+		$shortopts .= 'f:';  		// String 			@FOLDER =>			Valor opcional
+		$shortopts .= 'i:';			// String			@INPUT-FILENAME => 	Valor opcional
+		$shortopts .= 'o:';			// String			@OUTPUT-FILENAME => Valor opcional
+		$shortopts .= 'p:';			// Boolean String	@PRINT =>			Valor opcional
+		
+		/* Comandos largos */
+		$longopts  = [
+		    'folder:',				// String 			@FOLDER =>			Valor opcional
+		    'input-file:',			// String			@INPUT-FILENAME => 	Valor opcional
+		    'output-file:',			// String			@OUTPUT-FILENAME => Valor opcional
+		    'print:',				// Boolean String	@PRINT =>			Valor opcional
+		];
+		
+		$CfgParams = NULL;
+		
+		//	Intentaremos tomar los $CfgParams de los parametros recibidos en línea de comandos.
+		if( $options = getopt( $shortopts, $longopts ) ){
+			$CfgParams =&$options;
+
+		//	Si no recibimos parametros de comandos, apuntaremos la URL
+		} else {
+			$CfgParams =&$_GET;
+		}
+		
+		//	El parametro @PRINT es un booleano, así que debemos parsear previamente el string de entrada.
+		if( $tmpPrintOptn = $CfgParams['p'] ?? $CfgParams['print'] ?? FALSE ){
+			
+			//	Si recibimos una cadena la convertimos a minúsculas y verificamos solo la condición explícita TRUE.
+			if( is_string( $tmpPrintOptn ) && ( $tmpPrintOptn = strtolower( $tmpPrintOptn ) )){
+
+				//	Si es un String numérico, lo convertimos.
+				if( is_numeric( $tmpPrintOptn ) ){
+					$tmpPrintOptn = !!intval( $tmpPrintOptn );
+				}
+				
+				//	Si solo es una palabra, buscaremos la palabra reservada TRUE.
+				else{
+					
+					//	Queremos saber si EXPLÍCITAMENTE se pidió imprimir el resultado (además de guardarlo).
+					$tmpPrintOptn = $tmpPrintOptn == 'true';
+				}
+			}
+		}
+
+		//	Definimos las opciones
+		$RUTAS['folder'] =		realpath( $CfgParams['f'] ?? $CfgParams['folder'] ?? FALSE );
+		$RUTAS['input-file'] =	basename( $CfgParams['i'] ?? $CfgParams['input-file'] ?? FALSE );
+		$RUTAS['output-file'] =	basename( $CfgParams['o'] ?? $CfgParams['output-file'] ?? FALSE );
+		$RUTAS['print'] =		intval( $tmpPrintOptn );
+		
+		//	Si no recibimos un directorio de trabajo, establecemos el directorio actual como predeterminado.
+		if( !$RUTAS['folder'] ){
+			$RUTAS['folder'] = __DIR__;
+		}
+
+		//	Si recibimos un nombre de archivo  de entrada, veificamos su extensión.
+		if( $i =& $RUTAS['input-file'] ){
+			
+			if( strtolower( substr( $i, strrpos( $i, '.' )+1 ) ) !== 'txt' ){
+				throw new Exception( 'Por seguridad, los archivos de entrada solo pueden tener extensión *.txt' );
+			}
+		} else {
+			$RUTAS['input-file'] = 'entrada.txt';
+		}
+		
+		//	Si no recibimos un archivo de salida, establecemos un valor predeterminado.
+		if( !$RUTAS['output-file'] ){
+			$RUTAS['output-file'] = 'salida.txt';
+		}
+
+if( empty( $FGC = is_readable( $f = realpath( $RUTAS['folder'].'/'.$RUTAS['input-file'] ) ) ? file_get_contents( $f ) : FALSE ) ){
 	
 	//	No pudimos cargar el archivo
 	die( 'No se pudo cargar el archivo de puntuaciones' );
@@ -79,10 +163,13 @@ $GANADOR_PUNTAJE = $GANADOR_JUEGO == 1 ? $j1 : $j2;
 
 $STR_SALIDA = "$GANADOR_JUEGO $GANADOR_PUNTAJE";
 
-if( !is_writable( __DIR__ ) ){
+if( !is_writable( $RUTAS['folder'] ) ){
 	die( 'No se pudo guardar el archivo. Compruebe permisos de escritura.' );
 }
 
-file_put_contents( __DIR__ . '/salida.txt', $STR_SALIDA );
+file_put_contents( $RUTAS['folder'].'/'.$RUTAS['output-file'], $STR_SALIDA );
 
-die( $STR_SALIDA );
+//	Si se solicitó imprimir la salida, la imprimimos.
+if( $RUTAS['print'] ){
+	die( $STR_SALIDA );
+}
