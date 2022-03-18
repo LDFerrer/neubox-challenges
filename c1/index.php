@@ -23,7 +23,8 @@
 			@param Throwable $excptnOrErrorStr:	Instancia {Throwable} con la información del error.
 	*/
 	function errorMsg( $excptnOrErrorStr ){
-		
+
+		//	Si $excptnOrErrorStr no es un String ni una instancia Throwable... terminamos aquí.
 		if( !is_string( $excptnOrErrorStr ) and empty( $excptnOrErrorStr instanceof Throwable ) ){
 			die ( '[Error No Controlado].');
 		}
@@ -85,34 +86,125 @@
 
 // [TERMINA BLOQUE]: Impresión y control de errores.
 
+$RUTAS_TRABAJO = [];
+
+#### Parametros modificadores: ###
+
+	/*	Desde línea de comandos y parametros de URL (GET):
+	 *	 -f, --folder:		Directorio de trabajo.
+	 *	 -b, --book:		Libro de instrucciones.
+	 *	 -i, --input-file:	Archivo de entrada.
+	 *	 -o, --output-file:	Archivo de salida.
+	 *	 -p, --print:		¿Imprimir salida?.
+	*/
+		
+		/* Comandos cortos */
+		$shortopts  = '';
+		$shortopts .= 'f:';  		// String 			@FOLDER =>			Valor opcional
+		$shortopts .= 'b:';			// String			@BOOK => 			Valor opcional
+		$shortopts .= 'i:';			// String			@INPUT-FILENAME => 	Valor opcional
+		$shortopts .= 'o:';			// String			@OUTPUT-FILENAME => Valor opcional
+		$shortopts .= 'p:';			// Boolean String	@PRINT =>			Valor opcional
+		
+		/* Comandos largos */
+		$longopts  = [
+		    'folder:',				// String 			@FOLDER =>			Valor opcional
+		    'book:',				// String 			@BOOK =>			Valor opcional
+		    'input-file:',			// String			@INPUT-FILENAME => 	Valor opcional
+		    'output-file:',			// String			@OUTPUT-FILENAME => Valor opcional
+		    'print:',				// Boolean String	@PRINT =>			Valor opcional
+		];
+		
+		$CfgParams = NULL;
+		
+		//	Intentaremos tomar los $CfgParams de los parametros recibidos en línea de comandos.
+		if( $options = getopt( $shortopts, $longopts ) ){
+			$CfgParams =&$options;
+
+		//	Si no recibimos parametros de comandos, apuntaremos la URL
+		} else {
+			$CfgParams =&$_GET;
+		}
+		
+		//	El parametro @PRINT es un booleano, así que debemos parsear previamente el string de entrada.
+		if( $tmpPrintOptn = $CfgParams['p'] ?? $CfgParams['print'] ?? FALSE ){
+			
+			//	Si recibimos una cadena la convertimos a minúsculas y verificamos solo la condición explícita TRUE.
+			if( is_string( $tmpPrintOptn ) && ( $tmpPrintOptn = strtolower( $tmpPrintOptn ) )){
+
+				//	Si es un String numérico, lo convertimos.
+				if( is_numeric( $tmpPrintOptn ) ){
+					$tmpPrintOptn = !!intval( $tmpPrintOptn );
+				}
+				
+				//	Si solo es una palabra, buscaremos la palabra reservada TRUE.
+				else{
+					
+					//	Queremos saber si EXPLÍCITAMENTE se pidió imprimir el resultado (además de guardarlo).
+					$tmpPrintOptn = $tmpPrintOptn == 'true';
+				}
+			}
+		}
+
+		//	Definimos las opciones
+		$RUTAS_TRABAJO['folder'] =		realpath( $CfgParams['f'] ?? $CfgParams['folder'] ?? FALSE );
+		$RUTAS_TRABAJO['book'] =		basename( $CfgParams['b'] ?? $CfgParams['book'] ?? FALSE );
+		$RUTAS_TRABAJO['input-file'] =	basename( $CfgParams['i'] ?? $CfgParams['input-file'] ?? FALSE );
+		$RUTAS_TRABAJO['output-file'] =	basename( $CfgParams['o'] ?? $CfgParams['output-file'] ?? FALSE );
+		$RUTAS_TRABAJO['print'] =		intval( $tmpPrintOptn );
+		
+		//	Si no recibimos un directorio de trabajo, establecemos el directorio actual como predeterminado.
+		if( !$RUTAS_TRABAJO['folder'] ){
+			$RUTAS_TRABAJO['folder'] = __DIR__;
+		}
+		
+		//	Si no recibimos un libro de instrucciones, establecemos un valor predeterminado.
+		if( !$RUTAS_TRABAJO['book'] ){
+			$RUTAS_TRABAJO['book'] = '1.libro-de-instrucciones.txt';
+		}
+
+		//	Si recibimos un nombre de archivo  de entrada, veificamos su extensión.
+		if( $i =& $RUTAS_TRABAJO['input-file'] ){
+			
+			if( strtolower( substr( $i, strrpos( $i, '.' )+1 ) ) !== 'txt' ){
+				throw new Exception( 'Por seguridad, los archivos de entrada solo pueden tener extensión *.txt' );
+			}
+		} else {
+			$RUTAS_TRABAJO['input-file'] = '2.entrada.txt';
+		}
+		
+		//	Si no recibimos un archivo de salida, establecemos un valor predeterminado.
+		if( !$RUTAS_TRABAJO['output-file'] ){
+			$RUTAS_TRABAJO['output-file'] = '3.salida.txt';
+		}
+
 #	-----------------------------------------------------------------------------------
 
 	//	Definimos las rutas de los archivos que vamos a usar y verificamos permisos.
 	$RUTAS = [
+		//	El archivo de clase siempre debe estar junto a los demás del proyecto
 		'clase_cifrado'		=>		__DIR__ . '/clase_cifrado.php',
-		'instrucciones'		=>		__DIR__ . '/1.libro-de-instrucciones.txt',
-		'archv_entrada'		=>		__DIR__ . '/2.entrada.txt',
-		'archv_salida'		=>		__DIR__ . '/3.salida.txt',
+		
+		//	Todos los archivos deben estar en el mismo directorio de trabajo {$RUTAS_TRABAJO['folder']}.
+		'instrucciones'		=>		$RUTAS_TRABAJO['folder'] . '/' . $RUTAS_TRABAJO['book'],
+		'archv_entrada'		=>		$RUTAS_TRABAJO['folder'] . '/' . $RUTAS_TRABAJO['input-file'],
+		'archv_salida'		=>		$RUTAS_TRABAJO['folder'] . '/' . $RUTAS_TRABAJO['output-file'],
 	];
 	
-	if( empty( $f = realpath( $RUTAS['clase_cifrado'] ) || !is_readable( $f ) ) ){
-		throw new Exception( 'No se puede leer el archivo ' . basename( $f ) );
+	if( empty( $f = realpath( $RUTAS['clase_cifrado'] ) ) || !is_readable( $f ) ){
+		throw new Exception( 'No se puede leer el archivo de cifrado.' );
 	}
 
-	if( empty( $f = realpath( $RUTAS['instrucciones'] ) || !is_readable( $f ) ) ){
-		throw new Exception( 'No se puede leer el archivo ' . basename( $f ) );
+	if( empty( $f = realpath( $RUTAS['instrucciones'] ) ) || !is_readable( $f ) ){
+		throw new Exception( 'No se puede leer el libro de instrucciones.' );
 	}
 
-	if( empty( $f = realpath( $RUTAS['archv_entrada'] ) || !is_readable( $f ) ) ){
-		throw new Exception( 'No se puede leer el archivo ' . basename( $f ) );
+	if( empty( $f = realpath( $RUTAS['archv_entrada'] ) ) || !is_readable( $f ) ){
+		throw new Exception( 'No se puede leer el archivo de entrada.' );
 	}
 
-	if( empty( $f = dirname( realpath( $RUTAS['archv_salida'] ) ) || !is_writable( $f ) ) ){
-		throw new Exception( 'La carpeta de salida no permite escritura [' . $f . '].' );
-	}
-
-	if( empty( $f = realpath( $RUTAS['archv_salida'] ) || !is_writable( $f ) ) ){
-		throw new Exception( 'No se puede leer el archivo ' . basename( $f ) );
+	if( empty( $f = dirname( realpath( $RUTAS['archv_salida'] ) ) ) || !is_writable( $f ) ){
+		throw new Exception( 'La carpeta de salida no permite escribir el archivo de salida [' . $f . '].' );
 	}
 	
 	unset( $f );
@@ -283,6 +375,10 @@
 
 #	-----------------------------------------------------------------------------------
 
-//	Imprimimos el archivo como texto plano
-header( 'Content-Type: text/plain' );
-readfile( RUTAS[ 'archv_salida' ] );
+//	Si se solicitó que se imprima el resultado en pantalla: IMPRIMIMOS.
+if( $RUTAS_TRABAJO['print'] ){
+	
+	//	Imprimimos el archivo como texto plano
+	header( 'Content-Type: text/plain' );
+	readfile( RUTAS[ 'archv_salida' ] );
+}
