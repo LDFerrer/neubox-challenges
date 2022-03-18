@@ -1,5 +1,10 @@
 <?php
 
+/*	***** COMENTARIO *****
+	Al hablar de CIFRADO y mensajes, se asume que el codigo debe enfocarse en la seguridad y fiabilidad del mensaje.
+	por lo que usaremos validaciones mediante expresiones regulares para impedir inyecciones de cualquier tipo.
+*/
+
 /*    [BLOQUE]: Impresión y control de errores.
 **    No incluir estas funciones desde fuera, porque si se dañan: PERDEMOS EL CONTROL DE ERRORES.
 */
