@@ -132,41 +132,49 @@ for( $x = 1; $x <= $rondasJugadas; $x++ ){
 	
 	$ronda = &$datos[ $x ];
 	
-	/*	Usamos el operador de nave espacial que nos dirá qué jugador ganó y guardaremos las rondas que ganó.
+	/*	Saber QUÉ JUGADOR ganó cada ronda, sirve para contabilizar SOLO sus puntos de rondas ganadas.
+		Usamos el operador de nave espacial que nos dirá qué jugador ganó y guardaremos las rondas que ganó.
 		* 1: J1,
 		* -1: J2.
 	*/
 	$ganador = $ronda[ 'j1' ] <=> $ronda[ 'j2' ];
 
-	//	Ganó J1
-	if( $ganador === 1 ){
-		
-		//	Calculamos la ventaja con que ganó el jugador.
-		$j1[] = ( $ronda[ 'j1' ] - $ronda[ 'j2' ] );
-	}
-
-	//	Ganó J2
-	if( $ganador === -1 ){
-		
-		//	Calculamos la ventaja con que ganó el jugador.
-		$j2[] = ( $ronda[ 'j2' ] - $ronda[ 'j1' ] );
-	}
+	/*	Las rondas perdidas de cada jugador lo dejan en desventaja, y como la regla dice que gana el que consiguió
+		MAYOR VENTAJA, sería ilógico agregar sus rondas en desventaja al contador.
+	*/
+		//	Ganó J1
+		if( $ganador === 1 ){
+	
+			//	Calculamos la ventaja con que ganó el jugador y la agregamos a su lista de rondas ganadas.
+			$j1[] = ( $ronda[ 'j1' ] - $ronda[ 'j2' ] );
+		}
+	
+		//	Ganó J2
+		if( $ganador === -1 ){
+			
+			//	Calculamos la ventaja con que ganó el jugador y la agregamos a su lista de rondas ganadas.
+			$j2[] = ( $ronda[ 'j2' ] - $ronda[ 'j1' ] );
+		}
 }
 
-//	Comparamos los puntajes mas altos de ventajas de cada jugador:
-$PUNTAJES = ( $j1 = max( $j1 ) ) <=> ( $j2 = max( $j2 ) );
+//	Sumamos las rondas ganadas de cada jugador:
+$PUNTAJES = ( $j1 = array_sum( $j1 ) ) <=> ( $j2 = array_sum( $j2 ) );
 
 //	Asumimos que SIEMPRE existe un ganador, por lo que si NO GANA 1, GANARÁ 2.
 $GANADOR_JUEGO = ( $PUNTAJES === 1 ) ? 1 : 2;
 
+//	Definimos el puntaje del ganador.
 $GANADOR_PUNTAJE = $GANADOR_JUEGO == 1 ? $j1 : $j2;
 
+//	Definimos la cadena de resultado.
 $STR_SALIDA = "$GANADOR_JUEGO $GANADOR_PUNTAJE";
 
+//	Si el directorio destino NO tiene permisos de escritura, lanzamos un error.
 if( !is_writable( $RUTAS['folder'] ) ){
 	die( 'No se pudo guardar el archivo. Compruebe permisos de escritura.' );
 }
 
+//	Guardamos la salida.
 file_put_contents( $RUTAS['folder'].'/'.$RUTAS['output-file'], $STR_SALIDA );
 
 //	Si se solicitó imprimir la salida, la imprimimos.
