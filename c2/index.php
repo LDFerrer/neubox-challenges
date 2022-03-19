@@ -157,7 +157,7 @@ for( $x = 1; $x <= $rondasJugadas; $x++ ){
 		}
 }
 
-//	Sumamos las rondas ganadas de cada jugador:
+//	Sumamos los puntos en rondas ganadas de cada jugador:
 $PUNTAJES = ( $j1 = array_sum( $j1 ) ) <=> ( $j2 = array_sum( $j2 ) );
 
 //	Asumimos que SIEMPRE existe un ganador, por lo que si NO GANA 1, GANARÁ 2.
